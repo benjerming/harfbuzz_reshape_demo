@@ -57,7 +57,7 @@ void render_glyphs(FT_Face ft_face, const char *text, hb_buffer_t *buf_shaped,
 
   // 创建图像 (增加高度以容纳两行文字)
   int img_width = 800;
-  int img_height = 400;
+  int img_height = 800;
   Image img(img_width, img_height);
 
   // 第一行：原始文字（不经过整形，直接用字符码点渲染）
@@ -88,13 +88,6 @@ void render_glyphs(FT_Face ft_face, const char *text, hb_buffer_t *buf_shaped,
       p += 4;
     } else {
       p += 1;
-      continue;
-    }
-
-    // 跳过空格
-    if (codepoint == 0x20) {
-      pen_x += 20; // 简单的空格宽度
-      char_count++;
       continue;
     }
 
@@ -158,8 +151,43 @@ void render_glyphs(FT_Face ft_face, const char *text, hb_buffer_t *buf_shaped,
     pen_y += glyph_pos_shaped[i].y_advance / 64;
   }
 
-  // 添加标签文字
-  // 这里可以添加"原始文字"和"整形后文字"的标签，但需要额外的字体渲染
+  // // 第三行：整形后的文字（基线位置）
+  // pen_x = 50;
+  // pen_y += baseline_y_shaped;
+
+  // // 渲染第三行：整形后文字的前glyph_count个字形(分开绘制字形)
+  // for (int i = 0; i < glyph_count; i++) {
+  //   if (FT_Load_Glyph(ft_face, glyph_info_shaped[i].codepoint,
+  //                     FT_LOAD_RENDER)) {
+  //     continue;
+  //   }
+
+  //   FT_GlyphSlot slot = ft_face->glyph;
+  //   FT_Bitmap *bitmap = &slot->bitmap;
+
+  //   // int x_pos = pen_x + slot->bitmap_left + (glyph_pos_shaped[i].x_offset
+  //   /
+  //   // 64); int y_pos = pen_y - slot->bitmap_top +
+  //   (glyph_pos_shaped[i].y_offset
+  //   // / 64);
+  //   int x_pos = pen_x + slot->bitmap_left;
+  //   int y_pos = pen_y - slot->bitmap_top;
+
+  //   // 绘制字形位图
+  //   for (unsigned int by = 0; by < bitmap->rows; by++) {
+  //     for (unsigned int bx = 0; bx < bitmap->width; bx++) {
+  //       unsigned char pixel = bitmap->buffer[by * bitmap->pitch + bx];
+  //       if (pixel > 0) {
+  //         img.blend_pixel(x_pos + bx, y_pos + by, pixel);
+  //       }
+  //     }
+  //   }
+
+  //   // pen_x += glyph_pos_shaped[i].x_advance / 64;
+  //   // pen_y += glyph_pos_shaped[i].y_advance / 64;
+  //   pen_x += slot->advance.x / 64;
+  //   pen_y += slot->advance.y / 64;
+  // }
 
   // 保存图像
   if (img.save_png(output_filename)) {
@@ -274,11 +302,11 @@ int main(int argc, char **argv) {
 
   // 生成逐步的图片
   std::println("=== 生成逐步图片（两行对比）===\n");
+  std::filesystem::path output_dir = "output";
+  std::filesystem::remove_all(output_dir);
+  std::filesystem::create_directories(output_dir);
   for (unsigned int i = 1; i <= shaped_glyph_count; i++) {
-    const auto filename =
-        std::filesystem::path("output") / std::format("step_{:02d}.png", i);
-    std::filesystem::remove_all(filename.parent_path());
-    std::filesystem::create_directories(filename.parent_path());
+    const auto filename = output_dir / std::format("step_{:02d}.png", i);
     render_glyphs(ft_face, text, buf_shaped, i, filename.string().c_str());
   }
 
